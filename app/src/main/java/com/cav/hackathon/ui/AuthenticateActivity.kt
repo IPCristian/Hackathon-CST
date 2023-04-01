@@ -276,3 +276,4 @@ fun WaveHeader(modifier: Modifier = Modifier) {
         tint = MaterialTheme.colorScheme.primary
     )
 }
+

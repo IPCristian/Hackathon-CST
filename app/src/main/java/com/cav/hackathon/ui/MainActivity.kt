@@ -1,5 +1,6 @@
 package com.cav.hackathon.ui
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -33,18 +35,20 @@ class MainActivity : ComponentActivity() {
         setContent {
             HackathonCSTTheme {
                 val selectedPage = remember { mutableStateOf(1) }
+                val context = LocalContext.current
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background)
                 ) {
-                    Box(
+                    Column(
                         modifier = Modifier.align(Alignment.TopCenter)
                     ) {
+                        WaveHeader()
                         when (selectedPage.value) {
                             1 -> GameMenu(
-                                onHostGameClicked = { /*TODO*/ },
-                                onJoinGameClicked = { /*Todo */ })
+                                onHostGameClicked = { startActivity(Intent(context, GameActivity::class.java).putExtra("isHost", true)) },
+                                onJoinGameClicked = { startActivity(Intent(context, GameActivity::class.java).putExtra("isHost", false)) })
                         }
                     }
                     BottomNavigation(
@@ -62,12 +66,18 @@ fun BottomNavigation(
     selectedPage: MutableState<Int>,
     modifier: Modifier
 ) {
-    Surface(
+    Box(
         modifier = modifier
             .height(80.dp)
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.background)
     ) {
+        Column(Modifier.fillMaxSize()) {
+            BottomBackground(modifier = Modifier.fillMaxWidth())
+            Spacer(modifier = Modifier
+                .height(40.dp)
+                .background(MaterialTheme.colorScheme.primary))
+        }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -179,9 +189,22 @@ fun GameMenu(
                     keyboardType = KeyboardType.Text,
                     imeAction = ImeAction.Done
                 ),
-                modifier = Modifier.fillMaxWidth(0.6f)
+                modifier = Modifier
+                    .fillMaxWidth(0.6f)
                     .align(Alignment.CenterHorizontally)
             )
         }
     }
+}
+
+@Composable
+fun BottomBackground(modifier: Modifier = Modifier) {
+    Icon(
+        modifier = modifier,
+        painter = rememberVectorPainter(
+            image = ImageVector.vectorResource(id = R.drawable.bottomwave)
+        ),
+        contentDescription = "Dynamic SVG Image",
+        tint = MaterialTheme.colorScheme.primary
+    )
 }
