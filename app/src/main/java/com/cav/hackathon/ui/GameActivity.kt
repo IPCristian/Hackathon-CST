@@ -1,6 +1,7 @@
 package com.cav.hackathon.ui
 
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -18,9 +19,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import com.cav.hackathon.models.Question
 import com.cav.hackathon.models.Session
+import com.cav.hackathon.models.User
 import com.cav.hackathon.ui.theme.HackathonCSTTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.firestore.ktx.toObject
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,18 +41,19 @@ class GameActivity : ComponentActivity() {
 
         val auth = FirebaseAuth.getInstance()
         val sessionCollection = Firebase.firestore.collection("sessions")
+        val userCollection = Firebase.firestore.collection("users")
         isHost.value = intent.getBooleanExtra("isHost", false)
         val questions = listOf(
             Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
-            Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
-            Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
-            Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
-            Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
-            Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
-            Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
-            Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
-            Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
-            Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
+            Question("intrebare 2", listOf("a", "b", "c", "d"), "a"),
+            Question("intrebare 3", listOf("a", "b", "c", "d"), "a"),
+            Question("intrebare 4", listOf("a", "b", "c", "d"), "a"),
+            Question("intrebare 5", listOf("a", "b", "c", "d"), "a"),
+            Question("intrebare 6", listOf("a", "b", "c", "d"), "a"),
+            Question("intrebare 7", listOf("a", "b", "c", "d"), "a"),
+            Question("intrebare 8", listOf("a", "b", "c", "d"), "a"),
+            Question("intrebare 9", listOf("a", "b", "c", "d"), "a"),
+            Question("intrebare 10", listOf("a", "b", "c", "d"), "a"),
         )
 
         if (isHost.value) {
@@ -70,7 +74,7 @@ class GameActivity : ComponentActivity() {
             }
 
             lifecycleScope.launch {
-                // Log.d("sessionCode",currentSession.value.sessionCode.toString())
+
                 sessionCollection.whereEqualTo("sessionCode", currentSession.value.sessionCode)
                     .addSnapshotListener { value, error ->
                         if (error == null) {
@@ -87,20 +91,40 @@ class GameActivity : ComponentActivity() {
                         }
                     }
             }
-        } else {
-            CoroutineScope(Dispatchers.IO).launch {
+        }
+        else {
+            lifecycleScope.launch {
+
+                Log.d("TestSuccess",currentSession.value.participants.toString())
+
+                var crtUser = ""
+                userCollection.whereEqualTo("userUID",auth.currentUser!!.uid).get().addOnCompleteListener { task ->
+                            if (task.isSuccessful)
+                            {
+                                crtUser = task.result.documents[0].toObject(User::class.java)!!.displayName
+                            }
+                        }
+
                 sessionCollection.whereEqualTo("sessionCode" ,intent.getStringExtra("sessionCode")).get().addOnCompleteListener { task ->
                     if(task.isSuccessful ) {
                         currentSession.value = task.result.documents[0].toObject(Session::class.java)!!
                         val newParticipants = currentSession.value.participants.toMutableList()
-                        newParticipants.add("Test")
+                        newParticipants.add(crtUser)
                         sessionCollection.document(task.result.documents[0].reference.id).update(mapOf(
                             "participants" to newParticipants
-                        )).addOnSuccessListener {
-                            // Log.d("TestSuccess","Worked")
-                            currentSession.value = currentSession.value.copy(participants = newParticipants)
+                        )).addOnSuccessListener { currentSession.value.participants = newParticipants }
+                    }
+                }
+
+                sessionCollection.whereEqualTo("sessionCode" ,intent.getStringExtra("sessionCode")).addSnapshotListener { value, error ->
+                    if (error == null)
+                    {
+                        if (value != null)
+                        {
+                            currentSession.value = value.documents[0].toObject(Session::class.java)!!
                         }
                     }
+
                 }
             }
         }
@@ -136,7 +160,7 @@ class GameActivity : ComponentActivity() {
                             }
                         }
                         Spacer(Modifier.height(40.dp))
-                        ListOfParticipants(currentSession)
+                        ListOfParticipants(currentSession.value.participants)
 
                         if (isHost.value) {
                             Spacer(Modifier.height(40.dp))
@@ -167,33 +191,16 @@ class GameActivity : ComponentActivity() {
     }
 }
 
-@Composable
-fun ListOfParticipants(currentSession: MutableState<Session>) {
-    var session by currentSession
-
-    LazyColumn(
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(session.participants) { element ->
-            ParticipantItem(name = element)
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ParticipantItem(name: String) {
-    Card(
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text(
-            text = name,
-            modifier = Modifier
-                .weight(1f)
-                .padding(16.dp)
-                .align(Alignment.CenterHorizontally)
-        )
+fun ListOfParticipants(stringList: List<String>) {
+    LazyColumn {
+        items(stringList) { item ->
+            Card(shape = RoundedCornerShape(24.dp),
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)) {
+
+                Text(text = item, fontSize = 24.sp, modifier = Modifier.fillMaxWidth(0.8f).padding(16.dp).align(Alignment.CenterHorizontally))
+            }
+        }
     }
 }
