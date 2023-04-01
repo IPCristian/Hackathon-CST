@@ -1,6 +1,8 @@
 package com.cav.hackathon
 
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.*
@@ -16,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -23,11 +26,20 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cav.hackathon.ui.theme.HackathonCSTTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.*
+import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+
+
         setContent {
             HackathonCSTTheme {
                 // State of Sign Up / Log In component
@@ -69,6 +81,7 @@ fun SignUpScreen(isOnLoginPage: MutableState<Boolean>) {
     val emailState = remember { mutableStateOf("") }
     val passwordState = remember { mutableStateOf("") }
     val confirmPasswordState = remember { mutableStateOf("") }
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -129,7 +142,30 @@ fun SignUpScreen(isOnLoginPage: MutableState<Boolean>) {
         Spacer(modifier = Modifier.height(64.dp))
 
         Button(
-            onClick = { /* Handle sign up action */ },
+            onClick = {
+                CoroutineScope(Dispatchers.IO).launch {
+                    val client = OkHttpClient()
+
+                    val urlBuilder = HttpUrl.parse("https://translated-mymemory---translation-memory.p.rapidapi.com/get")?.newBuilder()
+                    urlBuilder?.addQueryParameter("langpair", "en|fr")
+                    urlBuilder?.addQueryParameter("q", "Test for change!")
+                    urlBuilder?.addQueryParameter("mt", "1")
+                    urlBuilder?.addQueryParameter("onlyprivate", "0")
+                    urlBuilder?.addQueryParameter("de", "a@b.c")
+                    val url = urlBuilder?.build()
+
+                    val request = Request.Builder()
+                        .url(url)
+                        .get()
+                        .addHeader("X-RapidAPI-Key", "242fa97af6msha9e1941d0bfe38cp1d09bajsnbd2a7d5b6be0")
+                        .addHeader("X-RapidAPI-Host", "translated-mymemory---translation-memory.p.rapidapi.com")
+                        .build()
+
+                    val response = client.newCall(request).execute()
+                    response.body()?.let { Log.d("httpreq",JSONObject(JSONObject(it.string()).getString("responseData"))
+                        .getString("translatedText")) }
+                }
+            },
         ) {
             Text(text = "Sign Up", modifier = Modifier.padding(16.dp))
         }
