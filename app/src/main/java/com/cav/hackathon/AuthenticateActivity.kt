@@ -154,12 +154,14 @@ fun SignUpScreen(isOnLoginPage: MutableState<Boolean>) {
                     urlBuilder?.addQueryParameter("de", "a@b.c")
                     val url = urlBuilder?.build()
 
-                    val request = Request.Builder()
-                        .url(url)
-                        .get()
-                        .addHeader("X-RapidAPI-Key", "242fa97af6msha9e1941d0bfe38cp1d09bajsnbd2a7d5b6be0")
-                        .addHeader("X-RapidAPI-Host", "translated-mymemory---translation-memory.p.rapidapi.com")
-                        .build()
+                    val request = url?.let {
+                        Request.Builder()
+                            .url(it)
+                            .get()
+                            .addHeader("X-RapidAPI-Key", "242fa97af6msha9e1941d0bfe38cp1d09bajsnbd2a7d5b6be0")
+                            .addHeader("X-RapidAPI-Host", "translated-mymemory---translation-memory.p.rapidapi.com")
+                            .build()
+                    }
 
                     val response = client.newCall(request).execute()
                     response.body()?.let { Log.d("httpreq",JSONObject(JSONObject(it.string()).getString("responseData"))
