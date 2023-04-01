@@ -4,23 +4,25 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cav.hackathon.ui.theme.HackathonCSTTheme
-import androidx.compose.runtime.*
-import androidx.compose.ui.text.input.ImeAction
 
 class MainActivity : ComponentActivity() {
 
@@ -32,27 +34,30 @@ class MainActivity : ComponentActivity() {
                 var isOnLoginPage = rememberSaveable() {
                     mutableStateOf(true)
                 }
-
                 // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AnimatedVisibility(
-                        visible = isOnLoginPage.value,
-                        enter = fadeIn() + slideInHorizontally { -30 },
-                        exit = fadeOut() + slideOutHorizontally { 30 }
-                    ) {
-                        LoginScreen(isOnLoginPage)
+                    Column {
+                        WaveHeader()
+                        AnimatedVisibility(
+                            visible = isOnLoginPage.value,
+                            enter = fadeIn() + slideInHorizontally { -30 },
+                            exit = fadeOut() + slideOutHorizontally { 30 }
+                        ) {
+                            LoginScreen(isOnLoginPage)
+                        }
+                        AnimatedVisibility(
+                            visible = !isOnLoginPage.value,
+                            enter = fadeIn() + slideInHorizontally { -30 },
+                            exit = fadeOut() + slideOutHorizontally { 30 }
+                        ) {
+                            SignUpScreen(isOnLoginPage)
+                        }
                     }
                 }
-                AnimatedVisibility(
-                    visible = !isOnLoginPage.value,
-                    enter = fadeIn() + slideInHorizontally { -30 },
-                    exit = fadeOut() + slideOutHorizontally { 30 }
-                ) {
-                    SignUpScreen(isOnLoginPage)
-                }
+
             }
         }
     }
@@ -72,8 +77,13 @@ fun SignUpScreen(isOnLoginPage: MutableState<Boolean>) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = "Sign Up", fontSize = 48.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-        Spacer(modifier = Modifier.height(100.dp))
+        Text(
+            text = "Sign Up",
+            fontSize = 48.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Spacer(modifier = Modifier.height(36.dp))
 
         OutlinedTextField(
             value = nameState.value,
@@ -116,7 +126,7 @@ fun SignUpScreen(isOnLoginPage: MutableState<Boolean>) {
             shape = RoundedCornerShape(24.dp),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
         )
-        Spacer(modifier = Modifier.height(128.dp))
+        Spacer(modifier = Modifier.height(64.dp))
 
         Button(
             onClick = { /* Handle sign up action */ },
@@ -124,7 +134,7 @@ fun SignUpScreen(isOnLoginPage: MutableState<Boolean>) {
             Text(text = "Sign Up", modifier = Modifier.padding(16.dp))
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         TextButton(
             onClick = { isOnLoginPage.value = true },
@@ -187,4 +197,18 @@ fun LoginScreen(isOnLoginPage: MutableState<Boolean>) {
             Text(text = "Don't have an account? Sign up")
         }
     }
+}
+
+@Composable
+fun WaveHeader(modifier: Modifier = Modifier) {
+
+    // Draw the SVG image with the tint color
+    Icon(
+        modifier = modifier,
+        painter = rememberVectorPainter(
+            image = ImageVector.vectorResource(id = R.drawable.wave)
+        ),
+        contentDescription = "Dynamic SVG Image",
+        tint = MaterialTheme.colorScheme.primary
+    )
 }
