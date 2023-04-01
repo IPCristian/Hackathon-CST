@@ -1,12 +1,12 @@
-package com.cav.hackathon
+package com.cav.hackathon.ui
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.*
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -15,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
@@ -25,20 +24,72 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.cav.hackathon.R
+import com.cav.hackathon.models.User
 import com.cav.hackathon.ui.theme.HackathonCSTTheme
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import okhttp3.*
-import org.json.JSONObject
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 
-class MainActivity : ComponentActivity() {
+class AuthenticateActivity : ComponentActivity() {
+
+    val signUp: (String, String, String) -> Unit = { fullName, email, password ->
+        val auth = FirebaseAuth.getInstance()
+        val usersCollection = Firebase.firestore.collection("users")
+        try {
+            auth.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        auth.currentUser?.let {
+                            val newUser = User(it.uid, fullName, 0, listOf(), 0, 0)
+                            try {
+                                usersCollection.add(newUser)
+                            } catch (e: Exception) {
+                                Toast.makeText(this, getString(R.string.Error), Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        startActivity(Intent(this, MainActivity::class.java))
+                        finish()
+                    } else {
+                        val exception = task.exception
+                        Toast.makeText(this, getString(R.string.Error), Toast.LENGTH_SHORT).show()
+                        Log.e("SignUpError", exception!!.printStackTrace().toString())
+                    }
+                }
+        } catch(e: Exception) {
+            Toast.makeText(this, getString(R.string.Error), Toast.LENGTH_SHORT).show()
+            Log.e("SignUpError", e.printStackTrace().toString())
+        }
+    }
+
+    val login: (String, String) -> Unit = { email, password ->
+        val auth = FirebaseAuth.getInstance()
+        try {
+            auth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        startActivity(Intent(this, MainActivity::class.java))
+                        finish()
+                    } else {
+                        val exception = task.exception
+                        Toast.makeText(this, getString(R.string.Error), Toast.LENGTH_SHORT).show()
+                        Log.e("SignUpError", exception!!.printStackTrace().toString())
+                    }
+                }
+        } catch(e: Exception) {
+            Toast.makeText(this, getString(R.string.Error), Toast.LENGTH_SHORT).show()
+            Log.e("SignUpError", e.printStackTrace().toString())
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-
+        val auth = FirebaseAuth.getInstance()
+        if (auth.currentUser != null) {
+            startActivity(Intent(this, MainActivity::class.java))
+            finish()
+        }
 
         setContent {
             HackathonCSTTheme {
@@ -58,14 +109,14 @@ class MainActivity : ComponentActivity() {
                             enter = fadeIn() + slideInHorizontally { -30 },
                             exit = fadeOut() + slideOutHorizontally { 30 }
                         ) {
-                            LoginScreen(isOnLoginPage)
+                            LoginScreen(isOnLoginPage, login)
                         }
                         AnimatedVisibility(
                             visible = !isOnLoginPage.value,
                             enter = fadeIn() + slideInHorizontally { -30 },
                             exit = fadeOut() + slideOutHorizontally { 30 }
                         ) {
-                            SignUpScreen(isOnLoginPage)
+                            SignUpScreen(isOnLoginPage, signUp)
                         }
                     }
                 }
@@ -76,7 +127,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun SignUpScreen(isOnLoginPage: MutableState<Boolean>) {
+fun SignUpScreen(isOnLoginPage: MutableState<Boolean>, signUp: (String, String, String) -> Unit) {
     val nameState = remember { mutableStateOf("") }
     val emailState = remember { mutableStateOf("") }
     val passwordState = remember { mutableStateOf("") }
@@ -142,32 +193,7 @@ fun SignUpScreen(isOnLoginPage: MutableState<Boolean>) {
         Spacer(modifier = Modifier.height(64.dp))
 
         Button(
-            onClick = {
-                CoroutineScope(Dispatchers.IO).launch {
-                    val client = OkHttpClient()
-
-                    val urlBuilder = HttpUrl.parse("https://translated-mymemory---translation-memory.p.rapidapi.com/get")?.newBuilder()
-                    urlBuilder?.addQueryParameter("langpair", "en|fr")
-                    urlBuilder?.addQueryParameter("q", "Test for change!")
-                    urlBuilder?.addQueryParameter("mt", "1")
-                    urlBuilder?.addQueryParameter("onlyprivate", "0")
-                    urlBuilder?.addQueryParameter("de", "a@b.c")
-                    val url = urlBuilder?.build()
-
-                    val request = url?.let {
-                        Request.Builder()
-                            .url(it)
-                            .get()
-                            .addHeader("X-RapidAPI-Key", "242fa97af6msha9e1941d0bfe38cp1d09bajsnbd2a7d5b6be0")
-                            .addHeader("X-RapidAPI-Host", "translated-mymemory---translation-memory.p.rapidapi.com")
-                            .build()
-                    }
-
-                    val response = client.newCall(request).execute()
-                    response.body()?.let { Log.d("httpreq",JSONObject(JSONObject(it.string()).getString("responseData"))
-                        .getString("translatedText")) }
-                }
-            },
+            onClick = { signUp(nameState.value, emailState.value, passwordState.value) },
         ) {
             Text(text = "Sign Up", modifier = Modifier.padding(16.dp))
         }
@@ -184,7 +210,7 @@ fun SignUpScreen(isOnLoginPage: MutableState<Boolean>) {
 }
 
 @Composable
-fun LoginScreen(isOnLoginPage: MutableState<Boolean>) {
+fun LoginScreen(isOnLoginPage: MutableState<Boolean>, login: (String, String) -> Unit) {
     val emailState = remember { mutableStateOf("") }
     val passwordState = remember { mutableStateOf("") }
 
@@ -220,7 +246,7 @@ fun LoginScreen(isOnLoginPage: MutableState<Boolean>) {
         Spacer(modifier = Modifier.height(128.dp))
 
         Button(
-            onClick = { /* Handle login action */ },
+            onClick = { login(emailState.value, passwordState.value) },
         ) {
             Text(text = "Log In", modifier = Modifier.padding(16.dp))
         }
