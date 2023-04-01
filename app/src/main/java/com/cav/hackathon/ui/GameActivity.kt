@@ -1,7 +1,6 @@
 package com.cav.hackathon.ui
 
 import android.os.Bundle
-import android.widget.Space
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,11 +9,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -33,7 +29,7 @@ import kotlin.random.Random
 
 class GameActivity : ComponentActivity() {
 
-    private var isHost: Boolean = false
+    private var isHost = mutableStateOf(false)
     private var isLoading = mutableStateOf(false)
     private var currentSession = mutableStateOf(Session())
 
@@ -42,21 +38,21 @@ class GameActivity : ComponentActivity() {
 
         val auth = FirebaseAuth.getInstance()
         val sessionCollection = Firebase.firestore.collection("sessions")
-        isHost = intent.getBooleanExtra("isHost", false)
+        isHost.value = intent.getBooleanExtra("isHost", false)
         val questions = listOf(
-            Question("intrebare 1", listOf("a","b","c", "d"), "a"),
-            Question("intrebare 1", listOf("a","b","c", "d"), "a"),
-            Question("intrebare 1", listOf("a","b","c", "d"), "a"),
-            Question("intrebare 1", listOf("a","b","c", "d"), "a"),
-            Question("intrebare 1", listOf("a","b","c", "d"), "a"),
-            Question("intrebare 1", listOf("a","b","c", "d"), "a"),
-            Question("intrebare 1", listOf("a","b","c", "d"), "a"),
-            Question("intrebare 1", listOf("a","b","c", "d"), "a"),
-            Question("intrebare 1", listOf("a","b","c", "d"), "a"),
-            Question("intrebare 1", listOf("a","b","c", "d"), "a"),
+            Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
+            Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
+            Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
+            Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
+            Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
+            Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
+            Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
+            Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
+            Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
+            Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
         )
 
-        if (isHost) {
+        if (isHost.value) {
             val session = Session(
                 generateRandomString(),
                 auth.currentUser!!.uid,
@@ -66,7 +62,7 @@ class GameActivity : ComponentActivity() {
             currentSession.value = session
 
             CoroutineScope(Dispatchers.IO).launch {
-                sessionCollection.add(session).addOnCompleteListener {task ->
+                sessionCollection.add(session).addOnCompleteListener { task ->
                     if (task.isSuccessful) {
                         isLoading.value = false
                     }
@@ -74,13 +70,36 @@ class GameActivity : ComponentActivity() {
             }
 
             lifecycleScope.launch {
-                sessionCollection.whereEqualTo("sessionCode", currentSession.value.sessionCode).addSnapshotListener { value, error ->
-                    if (error == null) {
-                        if (value != null) {
-                            currentSession.value = value.documents[0].toObject(Session::class.java)!!
+                // Log.d("sessionCode",currentSession.value.sessionCode.toString())
+                sessionCollection.whereEqualTo("sessionCode", currentSession.value.sessionCode)
+                    .addSnapshotListener { value, error ->
+                        if (error == null) {
+                            if (value != null) {
+                                currentSession.value =
+                                    value.documents[0].toObject(Session::class.java)!!
+                            }
+                        } else {
+                            Toast.makeText(
+                                this@GameActivity,
+                                "There was an error creating the session",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
-                    } else {
-                        Toast.makeText(this@GameActivity, "There was an error creating the session", Toast.LENGTH_SHORT).show()
+                    }
+            }
+        } else {
+            CoroutineScope(Dispatchers.IO).launch {
+                sessionCollection.whereEqualTo("sessionCode" ,intent.getStringExtra("sessionCode")).get().addOnCompleteListener { task ->
+                    if(task.isSuccessful ) {
+                        currentSession.value = task.result.documents[0].toObject(Session::class.java)!!
+                        val newParticipants = currentSession.value.participants.toMutableList()
+                        newParticipants.add("Test")
+                        sessionCollection.document(task.result.documents[0].reference.id).update(mapOf(
+                            "participants" to newParticipants
+                        )).addOnSuccessListener {
+                            // Log.d("TestSuccess","Worked")
+                            currentSession.value = currentSession.value.copy(participants = newParticipants)
+                        }
                     }
                 }
             }
@@ -93,21 +112,48 @@ class GameActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Column(modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = 80.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = 80.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
                         Text(text = "Session code", fontSize = 30.sp)
                         Spacer(Modifier.height(0.dp))
-                        Surface(shape = RoundedCornerShape(24.dp), border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)) {
+                        Surface(
+                            shape = RoundedCornerShape(24.dp),
+                            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                        ) {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Text(text = currentSession.value.sessionCode, fontSize = 48.sp, modifier = Modifier.padding(24.dp))
+                                Text(
+                                    text = currentSession.value.sessionCode,
+                                    fontSize = 48.sp,
+                                    modifier = Modifier.padding(24.dp)
+                                )
                             }
                         }
-                        ListOfParticipants(items = listOf("Item 1", "Item 2", "Item 3"))
+                        Spacer(Modifier.height(40.dp))
+                        ListOfParticipants(currentSession)
+
+                        if (isHost.value) {
+                            Spacer(Modifier.height(40.dp))
+                            Button(
+                                onClick = {},
+                                modifier = Modifier
+                                    .fillMaxWidth(0.5f)
+                                    .align(Alignment.CenterHorizontally)
+                            ) {
+                                Text(
+                                    text = "Start Game",
+                                    fontSize = 16.sp,
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
+                        }
+
                     }
                 }
             }
@@ -122,10 +168,32 @@ class GameActivity : ComponentActivity() {
 }
 
 @Composable
-fun ListOfParticipants(items: List<String>) {
-    LazyColumn {
-        items(items) { item ->
-            Text(text = item, fontSize = 24.sp)
+fun ListOfParticipants(currentSession: MutableState<Session>) {
+    var session by currentSession
+
+    LazyColumn(
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(session.participants) { element ->
+            ParticipantItem(name = element)
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ParticipantItem(name: String) {
+    Card(
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = name,
+            modifier = Modifier
+                .weight(1f)
+                .padding(16.dp)
+                .align(Alignment.CenterHorizontally)
+        )
     }
 }

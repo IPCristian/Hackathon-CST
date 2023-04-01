@@ -2,6 +2,7 @@ package com.cav.hackathon.ui
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -28,10 +29,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cav.hackathon.R
 import com.cav.hackathon.ui.theme.HackathonCSTTheme
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val sessionCollection = Firebase.firestore.collection("sessions")
+
         setContent {
             HackathonCSTTheme {
                 val selectedPage = remember { mutableStateOf(1) }
@@ -48,7 +53,19 @@ class MainActivity : ComponentActivity() {
                         when (selectedPage.value) {
                             1 -> GameMenu(
                                 onHostGameClicked = { startActivity(Intent(context, GameActivity::class.java).putExtra("isHost", true)) },
-                                onJoinGameClicked = { startActivity(Intent(context, GameActivity::class.java).putExtra("isHost", false)) })
+                                onJoinGameClicked = {
+                                    sessionCollection.get()
+                                        .addOnSuccessListener { querySnapshot ->
+                                            for (document in querySnapshot) {
+                                                val data = document.getString("sessionCode")
+                                                if (data == it)
+                                                    startActivity(Intent(context, GameActivity::class.java).putExtra("sessionCode", data))
+                                            }
+                                        }
+                                        .addOnFailureListener { exception ->
+                                            Log.e("Error",exception.stackTrace.toString())
+                                        }
+                                })
                         }
                     }
                     BottomNavigation(
