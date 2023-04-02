@@ -32,7 +32,7 @@ import kotlinx.coroutines.*
 class QuizActivity : ComponentActivity() {
 
     val currentSession = mutableStateOf(Session())
-    var timeRemaining by mutableStateOf(1)
+    var timeRemaining by mutableStateOf(10)
     var selectedAnswer by mutableStateOf("")
     var currentQuestion by mutableStateOf(0)
     var numberOfCorrectAnswers = 0
@@ -69,7 +69,7 @@ class QuizActivity : ComponentActivity() {
                         selectedAnswer = ""
                         if (currentQuestion < currentSession.value.questions.size - 1) {
                             currentQuestion += 1
-                            timeRemaining = 1
+                            timeRemaining = 10
                         } else {
                             sessionCollection.whereEqualTo(
                                 "sessionCode",
