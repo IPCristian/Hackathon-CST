@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -170,9 +172,10 @@ fun GameMenu(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center
+                .padding(0.dp),
+            verticalArrangement = Arrangement.Top
         ) {
+            Image(painter = painterResource(id = R.drawable.logo) , contentDescription = null, Modifier.size(250.dp).align(Alignment.CenterHorizontally))
             Button(
                 onClick = onHostGameClicked,
                 modifier = Modifier
@@ -182,8 +185,7 @@ fun GameMenu(
                 Text(text = "Host Game", fontSize = 16.sp, modifier = Modifier.padding(16.dp))
             }
 
-            Spacer(modifier = Modifier.height(100.dp))
-
+            Spacer(modifier = Modifier.height(50.dp))
             Button(
                 onClick = { onJoinGameClicked(codeInput) },
                 modifier = Modifier

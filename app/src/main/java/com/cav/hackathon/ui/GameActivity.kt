@@ -1,5 +1,6 @@
 package com.cav.hackathon.ui
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -14,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
@@ -44,7 +46,7 @@ class GameActivity : ComponentActivity() {
         val userCollection = Firebase.firestore.collection("users")
         isHost.value = intent.getBooleanExtra("isHost", false)
         val questions = listOf(
-            Question("intrebare 1", listOf("a", "b", "c", "d"), "a"),
+            Question("intrebare 1 - asta este foarte lunga", listOf("a este probabil bun", "b nu minte niciodata", "c este posibil", "nu cred ca este d"), "a este probabil bun"),
             Question("intrebare 2", listOf("a", "b", "c", "d"), "a"),
             Question("intrebare 3", listOf("a", "b", "c", "d"), "a"),
             Question("intrebare 4", listOf("a", "b", "c", "d"), "a"),
@@ -114,6 +116,9 @@ class GameActivity : ComponentActivity() {
                             "participants" to newParticipants
                         )).addOnSuccessListener { currentSession.value.participants = newParticipants }
                     }
+                    else{
+                        Log.d("TestSuccess","Failed")
+                    }
                 }
 
                 sessionCollection.whereEqualTo("sessionCode" ,intent.getStringExtra("sessionCode")).addSnapshotListener { value, error ->
@@ -122,6 +127,10 @@ class GameActivity : ComponentActivity() {
                         if (value != null)
                         {
                             currentSession.value = value.documents[0].toObject(Session::class.java)!!
+                            if (currentSession.value.isStarted) {
+                                startActivity(Intent(this@GameActivity, QuizActivity::class.java).putExtra("currentSession", currentSession.value.sessionCode).putExtra("isHost", isHost.value))
+                                finish()
+                            }
                         }
                     }
 
@@ -131,6 +140,7 @@ class GameActivity : ComponentActivity() {
 
         setContent {
             HackathonCSTTheme {
+                val context = LocalContext.current
                 // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -165,7 +175,18 @@ class GameActivity : ComponentActivity() {
                         if (isHost.value) {
                             Spacer(Modifier.height(40.dp))
                             Button(
-                                onClick = {},
+                                onClick = {
+                                    sessionCollection.whereEqualTo("sessionCode" , currentSession.value.sessionCode).get().addOnCompleteListener { task ->
+                                        if(task.isSuccessful ) {
+                                            currentSession.value = task.result.documents[0].toObject(Session::class.java)!!
+                                            sessionCollection.document(task.result.documents[0].reference.id).update(mapOf(
+                                                "started" to true
+                                            ))
+                                            startActivity(Intent(context, QuizActivity::class.java).putExtra("currentSession", currentSession.value.sessionCode).putExtra("isHost", isHost.value))
+                                            finish()
+                                        }
+                                    }
+                                },
                                 modifier = Modifier
                                     .fillMaxWidth(0.5f)
                                     .align(Alignment.CenterHorizontally)

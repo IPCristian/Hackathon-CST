@@ -3,4 +3,5 @@
     <string name="Error">There was an error</string>
     <string name="title_activity_main">MainActivity</string>
     <string name="title_activity_game">GameActivity</string>
+    <string name="title_activity_quiz">QuizActivity</string>
 </resources>
