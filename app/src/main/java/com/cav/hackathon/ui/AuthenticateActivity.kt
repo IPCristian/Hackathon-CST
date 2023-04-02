@@ -251,7 +251,6 @@ fun LoginScreen(isOnLoginPage: MutableState<Boolean>, login: (String, String) ->
             Text(text = "Log In", modifier = Modifier.padding(16.dp))
         }
 
-
         Spacer(modifier = Modifier.height(16.dp))
 
         TextButton(

@@ -21,6 +21,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cav.hackathon.models.Session
+import com.cav.hackathon.models.SessionScore
 import com.cav.hackathon.ui.theme.HackathonCSTTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.ktx.firestore
@@ -30,7 +31,7 @@ import kotlinx.coroutines.*
 class QuizActivity : ComponentActivity() {
 
     val currentSession = mutableStateOf(Session())
-    var timeRemaining by mutableStateOf(10)
+    var timeRemaining by mutableStateOf(1)
     var selectedAnswer by mutableStateOf("")
     var currentQuestion by mutableStateOf(0)
     var numberOfCorrectAnswers = 0
@@ -40,6 +41,7 @@ class QuizActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val sessionCollection = Firebase.firestore.collection("sessions")
+        val sessionScoreCollection = Firebase.firestore.collection("sessionScores")
         val auth = FirebaseAuth.getInstance()
 
         sessionCollection.whereEqualTo("sessionCode", intent.getStringExtra("currentSession"))
@@ -56,8 +58,7 @@ class QuizActivity : ComponentActivity() {
 
         CoroutineScope(Dispatchers.Default).launch {
             while (timeRemaining > 0) {
-                if (currentSession.value.questions.isNotEmpty())
-                {
+                if (currentSession.value.questions.isNotEmpty()) {
                     delay(1000)
                     timeRemaining -= 1
                     if (timeRemaining == 0) {
@@ -67,25 +68,38 @@ class QuizActivity : ComponentActivity() {
                         selectedAnswer = ""
                         if (currentQuestion < currentSession.value.questions.size - 1) {
                             currentQuestion += 1
-                            timeRemaining = 10
+                            timeRemaining = 1
                         } else {
-                            sessionCollection.whereEqualTo("sessionCode", currentSession.value.sessionCode).get().addOnCompleteListener { task ->
+                            sessionCollection.whereEqualTo(
+                                "sessionCode",
+                                currentSession.value.sessionCode
+                            ).get().addOnCompleteListener { task ->
                                 if (task.isSuccessful) {
-
+                                    currentSession.value =
+                                        task.result.documents[0].toObject(Session::class.java)!!
+                                    sessionScoreCollection.add(SessionScore(currentSession.value.sessionCode, auth.currentUser!!.uid, numberOfCorrectAnswers))
                                 }
                             }
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(
-                                    this@QuizActivity,
-                                    numberOfCorrectAnswers.toString(),
-                                    Toast.LENGTH_SHORT
-                                ).show()
+
+
+                            sessionScoreCollection.whereEqualTo("sessionCode", currentSession.value.sessionCode).get().addOnCompleteListener { task ->
+                                if (task.isSuccessful)
+                                    if (task.result.toObjects(SessionScore::class.java).maxBy { it.score }.score == numberOfCorrectAnswers) {
+                                        Toast.makeText(this@QuizActivity, "You have won", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             }
+//                            withContext(Dispatchers.Main) {
+//                                Toast.makeText(
+//                                    this@QuizActivity,
+//                                    numberOfCorrectAnswers.toString(),
+//                                    Toast.LENGTH_SHORT
+//                                ).show()
+//                            }
                         }
                     }
                 }
             }
-        }
 
         setContent {
             HackathonCSTTheme {
@@ -134,9 +148,13 @@ class QuizActivity : ComponentActivity() {
                                         .weight(1f)
                                         .height(150.dp),
                                     colors = CardDefaults.cardColors(Color.Red, Color.White),
-                                    border = if (selectedAnswer == currentSession.value.questions[currentQuestion].possibleAnswers[0]) BorderStroke(4.dp, MaterialTheme.colorScheme.secondary) else null,
+                                    border = if (selectedAnswer == currentSession.value.questions[currentQuestion].possibleAnswers[0]) BorderStroke(
+                                        4.dp,
+                                        MaterialTheme.colorScheme.secondary
+                                    ) else null,
                                     onClick = {
-                                        selectedAnswer = currentSession.value.questions[currentQuestion].possibleAnswers[0]
+                                        selectedAnswer =
+                                            currentSession.value.questions[currentQuestion].possibleAnswers[0]
                                     }
                                 ) {
                                     Box(Modifier.fillMaxSize())
@@ -155,9 +173,13 @@ class QuizActivity : ComponentActivity() {
                                         .weight(1f)
                                         .height(150.dp),
                                     colors = CardDefaults.cardColors(Color.Blue, Color.White),
-                                    border = if (selectedAnswer == currentSession.value.questions[currentQuestion].possibleAnswers[1]) BorderStroke(4.dp, MaterialTheme.colorScheme.secondary) else null,
+                                    border = if (selectedAnswer == currentSession.value.questions[currentQuestion].possibleAnswers[1]) BorderStroke(
+                                        4.dp,
+                                        MaterialTheme.colorScheme.secondary
+                                    ) else null,
                                     onClick = {
-                                        selectedAnswer = currentSession.value.questions[currentQuestion].possibleAnswers[1]
+                                        selectedAnswer =
+                                            currentSession.value.questions[currentQuestion].possibleAnswers[1]
                                     }
                                 ) {
                                     Box(Modifier.fillMaxSize())
@@ -178,9 +200,13 @@ class QuizActivity : ComponentActivity() {
                                         .weight(1f)
                                         .height(150.dp),
                                     colors = CardDefaults.cardColors(Color.Green, Color.White),
-                                    border = if (selectedAnswer == currentSession.value.questions[currentQuestion].possibleAnswers[2]) BorderStroke(4.dp, MaterialTheme.colorScheme.secondary) else null,
+                                    border = if (selectedAnswer == currentSession.value.questions[currentQuestion].possibleAnswers[2]) BorderStroke(
+                                        4.dp,
+                                        MaterialTheme.colorScheme.secondary
+                                    ) else null,
                                     onClick = {
-                                        selectedAnswer = currentSession.value.questions[currentQuestion].possibleAnswers[2]
+                                        selectedAnswer =
+                                            currentSession.value.questions[currentQuestion].possibleAnswers[2]
                                     }
                                 ) {
                                     Box(Modifier.fillMaxSize())
@@ -199,9 +225,13 @@ class QuizActivity : ComponentActivity() {
                                         .weight(1f)
                                         .height(150.dp),
                                     colors = CardDefaults.cardColors(Color.Yellow, Color.White),
-                                    border = if (selectedAnswer == currentSession.value.questions[currentQuestion].possibleAnswers[3]) BorderStroke(4.dp, MaterialTheme.colorScheme.secondary) else null,
+                                    border = if (selectedAnswer == currentSession.value.questions[currentQuestion].possibleAnswers[3]) BorderStroke(
+                                        4.dp,
+                                        MaterialTheme.colorScheme.secondary
+                                    ) else null,
                                     onClick = {
-                                        selectedAnswer = currentSession.value.questions[currentQuestion].possibleAnswers[3]
+                                        selectedAnswer =
+                                            currentSession.value.questions[currentQuestion].possibleAnswers[3]
                                     }
                                 ) {
                                     Box(Modifier.fillMaxSize())
