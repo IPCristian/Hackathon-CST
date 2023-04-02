@@ -4,4 +4,5 @@
     <string name="title_activity_main">MainActivity</string>
     <string name="title_activity_game">GameActivity</string>
     <string name="title_activity_quiz">QuizActivity</string>
+    <string name="title_activity_game_stats">GameStatsActivity</string>
 </resources>

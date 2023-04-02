@@ -1,10 +1,12 @@
 package com.cav.hackathon.ui
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,8 +31,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat.startActivity
 import com.cav.hackathon.R
+import com.cav.hackathon.models.User
 import com.cav.hackathon.ui.theme.HackathonCSTTheme
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 
@@ -38,45 +44,69 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val sessionCollection = Firebase.firestore.collection("sessions")
+        val userCollection = Firebase.firestore.collection("users")
+        val auth = FirebaseAuth.getInstance()
+        var crtUser = mutableStateOf(User())
 
-        setContent {
-            HackathonCSTTheme {
-                val selectedPage = remember { mutableStateOf(1) }
-                val context = LocalContext.current
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background)
-                ) {
-                    Column(
-                        modifier = Modifier.align(Alignment.TopCenter)
-                    ) {
-                        WaveHeader()
-                        when (selectedPage.value) {
-                            1 -> GameMenu(
-                                onHostGameClicked = { startActivity(Intent(context, GameActivity::class.java).putExtra("isHost", true)) },
-                                onJoinGameClicked = {
-                                    sessionCollection.get()
-                                        .addOnSuccessListener { querySnapshot ->
-                                            for (document in querySnapshot) {
-                                                val data = document.getString("sessionCode")
-                                                if (data == it)
-                                                    startActivity(Intent(context, GameActivity::class.java).putExtra("sessionCode", data))
-                                            }
-                                        }
-                                        .addOnFailureListener { exception ->
-                                            Log.e("Error",exception.stackTrace.toString())
-                                        }
-                                })
+        userCollection.whereEqualTo("userUID", auth.currentUser!!.uid).get()
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    crtUser.value = task.result.documents[0].toObject(User::class.java)!!
+                }
+
+                setContent {
+                    HackathonCSTTheme {
+                        val selectedPage = remember { mutableStateOf(1) }
+                        val context = LocalContext.current
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background)
+                        ) {
+                            Column(
+                                modifier = Modifier.align(Alignment.TopCenter)
+                            ) {
+                                WaveHeader()
+                                when (selectedPage.value) {
+                                    1 -> GameMenu(
+                                        onHostGameClicked = {
+                                            startActivity(
+                                                Intent(
+                                                    context,
+                                                    GameActivity::class.java
+                                                ).putExtra("isHost", true)
+                                            )
+                                        },
+                                        onJoinGameClicked = {
+                                            sessionCollection.get()
+                                                .addOnSuccessListener { querySnapshot ->
+                                                    for (document in querySnapshot) {
+                                                        val data = document.getString("sessionCode")
+                                                        if (data == it)
+                                                            startActivity(
+                                                                Intent(
+                                                                    context,
+                                                                    GameActivity::class.java
+                                                                ).putExtra("sessionCode", data)
+                                                            )
+                                                    }
+                                                }
+                                                .addOnFailureListener { exception ->
+                                                    Log.e("Error", exception.stackTrace.toString())
+                                                }
+                                        })
+
+                                    2 -> StatsMenu(crtUser)
+                                }
+                            }
+                            BottomNavigation(
+                                selectedPage = selectedPage,
+                                Modifier.align(Alignment.BottomCenter)
+                            )
                         }
                     }
-                    BottomNavigation(
-                        selectedPage = selectedPage,
-                        Modifier.align(Alignment.BottomCenter)
-                    )
                 }
             }
-        }
     }
 }
 
@@ -92,7 +122,6 @@ fun BottomNavigation(
             .background(MaterialTheme.colorScheme.background)
     ) {
         Column(Modifier.fillMaxSize()) {
-            BottomBackground(modifier = Modifier.fillMaxWidth())
             Spacer(modifier = Modifier
                 .height(40.dp)
                 .background(MaterialTheme.colorScheme.primary))
@@ -124,32 +153,11 @@ fun BottomNavigation(
                         selectedPage.value = 2
                     }) {
                 Icon(
-                    imageVector = Icons.Filled.Cable,
-                    contentDescription = "Options",
+                    imageVector = Icons.Filled.Analytics,
+                    contentDescription = "Stats",
                     tint = if (selectedPage.value == 2) MaterialTheme.colorScheme.primary else Color.Gray
                 )
                 if (selectedPage.value == 2) {
-                    Text(
-                        text = "Options",
-                        color = MaterialTheme.colorScheme.primary,
-                        fontSize = 20.sp
-                    )
-                }
-            }
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceEvenly,
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .clickable {
-                        selectedPage.value = 3
-                    }) {
-                Icon(
-                    imageVector = Icons.Filled.Analytics,
-                    contentDescription = "Stats",
-                    tint = if (selectedPage.value == 3) MaterialTheme.colorScheme.primary else Color.Gray
-                )
-                if (selectedPage.value == 3) {
                     Text(
                         text = "Stats",
                         color = MaterialTheme.colorScheme.primary,
@@ -175,7 +183,10 @@ fun GameMenu(
                 .padding(0.dp),
             verticalArrangement = Arrangement.Top
         ) {
-            Image(painter = painterResource(id = R.drawable.logo) , contentDescription = null, Modifier.size(250.dp).align(Alignment.CenterHorizontally))
+            Image(painter = painterResource(id = R.drawable.logo) , contentDescription = null,
+                Modifier
+                    .size(250.dp)
+                    .align(Alignment.CenterHorizontally))
             Button(
                 onClick = onHostGameClicked,
                 modifier = Modifier
@@ -185,18 +196,7 @@ fun GameMenu(
                 Text(text = "Host Game", fontSize = 16.sp, modifier = Modifier.padding(16.dp))
             }
 
-            Spacer(modifier = Modifier.height(50.dp))
-            Button(
-                onClick = { onJoinGameClicked(codeInput) },
-                modifier = Modifier
-                    .fillMaxWidth(0.8f)
-                    .align(Alignment.CenterHorizontally),
-                enabled = codeInput.length == 4
-            ) {
-                Text("Join Game with Code", fontSize = 16.sp, modifier = Modifier.padding(16.dp))
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(80.dp))
 
             OutlinedTextField(
                 value = codeInput,
@@ -212,18 +212,74 @@ fun GameMenu(
                     .fillMaxWidth(0.6f)
                     .align(Alignment.CenterHorizontally)
             )
+
+            Spacer(modifier = Modifier.height(28.dp))
+            Button(
+                onClick = { onJoinGameClicked(codeInput) },
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .align(Alignment.CenterHorizontally),
+                enabled = codeInput.length == 4
+            ) {
+                Text("Join Game with Code", fontSize = 16.sp, modifier = Modifier.padding(16.dp))
+            }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BottomBackground(modifier: Modifier = Modifier) {
-    Icon(
-        modifier = modifier,
-        painter = rememberVectorPainter(
-            image = ImageVector.vectorResource(id = R.drawable.bottomwave)
-        ),
-        contentDescription = "Dynamic SVG Image",
-        tint = MaterialTheme.colorScheme.primary
-    )
+fun StatsMenu(user: MutableState<User>) {
+
+    val context = LocalContext.current
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(0.dp),
+            verticalArrangement = Arrangement.Top,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = null,
+                Modifier
+                    .size(250.dp)
+                    .align(Alignment.CenterHorizontally)
+            )
+
+            Card(
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.secondary)
+            ){
+                Text(
+                    text = "Games played: ${user.value.nrOfGames}",
+                    fontSize = 24.sp,
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .align(Alignment.CenterHorizontally)
+                )
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Text(
+                    text = "Games won: ${user.value.nrOfWins}",
+                    fontSize = 24.sp,
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .align(Alignment.CenterHorizontally)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(100.dp))
+            Button(
+                onClick = {
+                    FirebaseAuth.getInstance().signOut()
+                    context.startActivity(Intent(context,AuthenticateActivity::class.java))
+                    (context as Activity).finish()
+                }
+            ) {
+                Text(text = "Sign out", modifier = Modifier.padding(16.dp))
+            }
+        }
+    }
 }

@@ -46,53 +46,72 @@ class GameActivity : ComponentActivity() {
         val userCollection = Firebase.firestore.collection("users")
         isHost.value = intent.getBooleanExtra("isHost", false)
         val questions = listOf(
-            Question("intrebare 1 - asta este foarte lunga", listOf("a este probabil bun", "b nu minte niciodata", "c este posibil", "nu cred ca este d"), "a este probabil bun"),
-            Question("intrebare 2", listOf("a", "b", "c", "d"), "a"),
-            Question("intrebare 3", listOf("a", "b", "c", "d"), "a"),
-            Question("intrebare 4", listOf("a", "b", "c", "d"), "a"),
-            Question("intrebare 5", listOf("a", "b", "c", "d"), "a"),
-            Question("intrebare 6", listOf("a", "b", "c", "d"), "a"),
-            Question("intrebare 7", listOf("a", "b", "c", "d"), "a"),
-            Question("intrebare 8", listOf("a", "b", "c", "d"), "a"),
-            Question("intrebare 9", listOf("a", "b", "c", "d"), "a"),
-            Question("intrebare 10", listOf("a", "b", "c", "d"), "a"),
-        )
+            Question("Which planet in our solar system is the hottest?", listOf("Venus", "Earth", "Mars", "Jupiter"), "Venus"),
+            Question("What is the capital of Australia?", listOf("Melbourne", "Sydney", "Canberra", "Brisbane"), "Melbourne"),
+            Question("Which country is the largest in terms of land area?", listOf("Russia", "United States", "China", "Canada"), "Russia"),
+            Question("Who painted the famous artwork \"The Mona Lisa\"?", listOf("Michelangelo", "Leonardo da Vinci", "Vincent van Gogh", "Pablo Picasso"), "Leonardo da Vinci"),
+            Question("What is the largest ocean in the world?", listOf("Indian Ocean", "Atlantic Ocean", "Arctic Ocean", "Pacific Ocean"), "Pacific Ocean"),
+            Question("Who wrote the Harry Potter book series?", listOf("J.K. Rowling", "Stephen King", "George R.R. Martin", "Suzanne Collins"), "J.K. Rowling"),
+            Question("What is the name of the highest mountain in the world?", listOf("Mount Kilimanjaro", "Mount Everest", "Mount Fuji", "Mount McKinley"), "Mount Everest"),
+            Question("Which animal is the largest living land mammal?", listOf("Elephant", "Rhino", "Hippopotamus", "Giraffe"), "Elephant"),
+            Question("Which of these elements is a metal?", listOf("Helium", "Carbon", "Oxygen", "Iron"), "Iron"),
+            Question("What is the currency of Japan?", listOf("Yen", "Euro", "Dollar", "Pound", "Yen"),
+        ))
 
         if (isHost.value) {
-            val session = Session(
-                generateRandomString(),
-                auth.currentUser!!.uid,
-                questions = questions
-            )
 
-            currentSession.value = session
-
-            CoroutineScope(Dispatchers.IO).launch {
-                sessionCollection.add(session).addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        isLoading.value = false
+            var crtUser = ""
+            userCollection.whereEqualTo("userUID", auth.currentUser!!.uid).get()
+                .addOnCompleteListener {
+                    if (it.isSuccessful) {
+                        crtUser = it.result.documents[0].toObject(User::class.java)!!.displayName
                     }
-                }
-            }
 
-            lifecycleScope.launch {
+                    fun generateRandomString(): String {
+                        val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+                        val random = Random(System.currentTimeMillis())
+                        return (1..4).map { chars[random.nextInt(chars.length)] }.joinToString("")
+                    }
 
-                sessionCollection.whereEqualTo("sessionCode", currentSession.value.sessionCode)
-                    .addSnapshotListener { value, error ->
-                        if (error == null) {
-                            if (value != null) {
-                                currentSession.value =
-                                    value.documents[0].toObject(Session::class.java)!!
+                    val session = Session(
+                        sessionCode = generateRandomString(),
+                        hostID = auth.currentUser!!.uid,
+                        questions = questions,
+                        participants = listOf("[Host] $crtUser")
+                    )
+
+                    currentSession.value = session
+
+                    CoroutineScope(Dispatchers.IO).launch {
+                        sessionCollection.add(session).addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                isLoading.value = false
                             }
-                        } else {
-                            Toast.makeText(
-                                this@GameActivity,
-                                "There was an error creating the session",
-                                Toast.LENGTH_SHORT
-                            ).show()
                         }
                     }
-            }
+
+                    lifecycleScope.launch {
+
+                        sessionCollection.whereEqualTo(
+                            "sessionCode",
+                            currentSession.value.sessionCode
+                        )
+                            .addSnapshotListener { value, error ->
+                                if (error == null) {
+                                    if (value != null) {
+                                        currentSession.value =
+                                            value.documents[0].toObject(Session::class.java)!!
+                                    }
+                                } else {
+                                    Toast.makeText(
+                                        this@GameActivity,
+                                        "There was an error creating the session",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                    }
+                }
         }
         else {
             lifecycleScope.launch {
@@ -204,18 +223,12 @@ class GameActivity : ComponentActivity() {
             }
         }
     }
-
-    fun generateRandomString(): String {
-        val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-        val random = Random(System.currentTimeMillis())
-        return (1..4).map { chars[random.nextInt(chars.length)] }.joinToString("")
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ListOfParticipants(stringList: List<String>) {
-    LazyColumn {
+    LazyColumn (verticalArrangement = Arrangement.spacedBy(25.dp)){
         items(stringList) { item ->
             Card(shape = RoundedCornerShape(24.dp),
                 border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)) {

@@ -1,5 +1,6 @@
 package com.cav.hackathon.ui
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -77,29 +78,40 @@ class QuizActivity : ComponentActivity() {
                                 if (task.isSuccessful) {
                                     currentSession.value =
                                         task.result.documents[0].toObject(Session::class.java)!!
-                                    sessionScoreCollection.add(SessionScore(currentSession.value.sessionCode, auth.currentUser!!.uid, numberOfCorrectAnswers))
+                                    sessionScoreCollection.add(
+                                        SessionScore(
+                                            currentSession.value.sessionCode,
+                                            auth.currentUser!!.uid,
+                                            numberOfCorrectAnswers
+                                        )
+                                    )
                                 }
                             }
 
 
-                            sessionScoreCollection.whereEqualTo("sessionCode", currentSession.value.sessionCode).get().addOnCompleteListener { task ->
-                                if (task.isSuccessful)
-                                    if (task.result.toObjects(SessionScore::class.java).maxBy { it.score }.score == numberOfCorrectAnswers) {
-                                        Toast.makeText(this@QuizActivity, "You have won", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
-//                            withContext(Dispatchers.Main) {
-//                                Toast.makeText(
-//                                    this@QuizActivity,
-//                                    numberOfCorrectAnswers.toString(),
-//                                    Toast.LENGTH_SHORT
-//                                ).show()
+//                            sessionScoreCollection.whereEqualTo(
+//                                "sessionCode",
+//                                currentSession.value.sessionCode
+//                            ).get().addOnCompleteListener { task ->
+//                                if (task.isSuccessful)
+//                                    if (task.result.toObjects(SessionScore::class.java)
+//                                            .maxBy { it.score }.score == numberOfCorrectAnswers
+//                                    ) {
+//                                        Toast.makeText(
+//                                            this@QuizActivity,
+//                                            "You have won",
+//                                            Toast.LENGTH_SHORT
+//                                        ).show()
+//                                    }
 //                            }
+
+                            startActivity(Intent(this@QuizActivity, GameStatsActivity::class.java).putExtra("sessionCode", currentSession.value.sessionCode))
+                            finish()
                         }
                     }
                 }
             }
+        }
 
         setContent {
             HackathonCSTTheme {
